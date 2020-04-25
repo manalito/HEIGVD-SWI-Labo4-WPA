@@ -23,7 +23,6 @@ from pbkdf2_math import pbkdf2_hex
 from numpy import array_split
 from numpy import array
 import hmac, hashlib
-import codecs
 
 def customPRF512(key,A,B):
     """
@@ -65,7 +64,13 @@ mic_to_test = "36eef66540fa801ceee2fea9b7929b40"
 
 B           = min(APmac,Clientmac)+max(APmac,Clientmac)+min(ANonce,SNonce)+max(ANonce,SNonce) #used in pseudo-random function
 
-data        = a2b_hex("0103005f02030a0000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000") #cf "Quelques détails importants" dans la donnée
+# Le paquet 9 (wpa[8]) de la capture contient les informations dont nous avons besoin pour récupérer cet élement
+data = scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower()[:162] + "0" * 32 + "0" * 4
+
+print ("data determined by captures :", data)
+#encodage de data
+data = a2b_hex(data)
+print ("data codée en dur            ", "0103005f02030a0000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000") #cf "Quelques détails importants" dans la donnée
 
 print ("\n\nValues used to derivate keys")
 print ("============================")
