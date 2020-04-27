@@ -15,28 +15,27 @@ Ensuite, le module izip étant introuvable dans la librairie itertools utilisé 
 https://stackoverflow.com/a/50483685
 
 
+*Chemin du script :*
 
-> Chemin du script : HEIGVD-SWI-Labo4
+HEIGVD-SWI-Labo4-WPA/files/wpa_key_derivation.py
 
-#### Utilisation du script:
-TODO
-![](images/commande_script_1.png)
+#### Utilisation du script :
+
+    python3 wpa_key_derivation.py
+    
+#### Preuve de fonctionnement :
+![](images/step1.png)
   
 
 ### 2. Scaircrack (aircrack basé sur Scapy)
 
-TODO
+*Chemin du script :*
 
-> Chemin du script :
-HEIGVD-SWI-Labo4
+HEIGVD-SWI-Labo4-WPA/files/scaircrack.py
 
-#### Preuve de fonctionnement du script:
-![](images/preuve_script%202a.PNG)
+#### Utilisation du script :
 
-b) Développer un script en Python/Scapy capable de générer une liste d'AP visibles dans la salle et de STA détectés et déterminer quelle STA est associée à quel AP. Par exemple 
-> Chemin du script :
-HEIGVD-SWI-Labo2-MAC-2/scripts/DetectNetworkAP.py
+    python3 scaircrack.py
 
-#### Preuve de fonctionnement du script:
-
-![](images/preuve_script_2b.PNG)
+#### Preuve de fonctionnement :
+![](images/step2.png)

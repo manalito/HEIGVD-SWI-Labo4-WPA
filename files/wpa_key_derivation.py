@@ -64,32 +64,33 @@ mic_to_test = "36eef66540fa801ceee2fea9b7929b40"
 
 B           = min(APmac,Clientmac)+max(APmac,Clientmac)+min(ANonce,SNonce)+max(ANonce,SNonce) #used in pseudo-random function
 
-# Le paquet 9 (wpa[8]) de la capture contient les informations dont nous avons besoin pour récupérer cet élement
+# Le paquet 9 (wpa[8]) de la capture contient les informations dont nous avons besoin pour récupérer l'élement data
+# "0103005f02030a0000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
 data = scapy.utils.linehexdump(wpa[8][EAPOL], 0, 1, True).replace(" ", "").lower()[:162] + "0" * 32 + "0" * 4
 
-print ("data determined by captures :", data)
-#encodage de data
-data = a2b_hex(data)
-print ("data codée en dur            ", "0103005f02030a0000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000") #cf "Quelques détails importants" dans la donnée
 
 print ("\n\nValues used to derivate keys")
 print ("============================")
-print ("Passphrase: ",passPhrase,"\n")
-print ("SSID: ",ssid,"\n")
-print ("AP Mac: ",b2a_hex(APmac),"\n")
-print ("CLient Mac: ",b2a_hex(Clientmac),"\n")
-print ("AP Nonce: ",b2a_hex(ANonce),"\n")
-print ("Client Nonce: ",b2a_hex(SNonce),"\n")
+print ("Passphrase: \t",passPhrase,"\n")
+print ("SSID: \t\t",ssid,"\n")
+print ("AP Mac: \t",b2a_hex(APmac).decode(),"\n")
+print ("CLient Mac:\t",b2a_hex(Clientmac).decode(),"\n")
+print ("AP Nonce:\t",b2a_hex(ANonce).decode(),"\n")
+print ("Client Nonce:\t",b2a_hex(SNonce).decode(),"\n")
+print ("data:\t\t", data)
 
-#calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
+# encodage de data en hexa
+data = a2b_hex(data)
+
+# calculate 4096 rounds to obtain the 256 bit (32 oct) PMK
 passPhrase = str.encode(passPhrase)
 ssid = str.encode(ssid)
 pmk = pbkdf2(hashlib.sha1,passPhrase, ssid, 4096, 32)
 
-#expand pmk to obtain PTK
+# expand pmk to obtain PTK
 ptk = customPRF512(pmk,str.encode(A),B)
 
-#calculate MIC over EAPOL payload (Michael)- The ptk is, in fact, KCK|KEK|TK|MICK
+# calculate MIC over EAPOL payload (Michael)- The ptk is, in fact, KCK|KEK|TK|MICK
 mic = hmac.new(ptk[0:16],data,hashlib.sha1)
 
 
